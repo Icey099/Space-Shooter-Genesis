@@ -3,6 +3,8 @@
 # =====================
 import math
 import pygame
+import random
+
 pygame.init()
 pygame.mouse.set_visible(False)
 # =====================
@@ -21,8 +23,12 @@ PLAYER_COLOR = (108, 180, 219)
 # =====================
 # Enemy
 # =====================
+ENEMY_HALF_BASE = 25
+ENEMY_HEIGHT = 40
 ENEMY_COLOR = (255, 70, 70)
-ENEMY_SPEED = 2
+ENEMY_SPEED = 1
+ENEMY_HIT_RADIUS = 25
+ENEMY_COUNT = 5
 # =====================
 # Bullets
 # =====================
@@ -36,37 +42,65 @@ FIRE_DELAY = 150
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 pygame.display.set_caption("My First Game")
 clock = pygame.time.Clock()
+font = pygame.font.SysFont(None, 36)
+# =====================
+# Functions
+# =====================
+def draw_ship(screen, x, y, angle, color, half_base, height):
+    tip = (
+        x + math.cos(angle) * height,
+        y + math.sin(angle) * height,
+    )
+    left = (
+        x + math.cos(angle + math.radians(140)) * half_base,
+        y + math.sin(angle + math.radians(140)) * half_base,
+    )
+    right = (
+        x + math.cos(angle - math.radians(140)) * half_base,
+        y + math.sin(angle - math.radians(140)) * half_base,
+    )
+    pygame.draw.polygon(screen, color, [tip, left, right])
+
+def spawn_enemy():
+    side = random.randint(0, 3)
+
+    if side == 0:
+        x = random.randint(0, SCREEN_WIDTH)
+        y = -50
+
+    elif side == 1:
+        x = random.randint(0, SCREEN_WIDTH)
+        y = SCREEN_HEIGHT + 50
+
+    elif side == 2:
+        x = -50
+        y = random.randint(0, SCREEN_HEIGHT)
+
+    else:
+        x = SCREEN_WIDTH + 50
+        y = random.randint(0, SCREEN_HEIGHT)
+
+    return {
+        "x": x,
+        "y": y,
+        "angle": 0,
+    }
 # =====================
 # Game Objects
 # =====================
 player_x = 100
 player_y = 100
 bullets = []
-enemies = [
-    {"x": 600, "y": 200, "angle": 0},
-    {"x": 300, "y": 450, "angle": 0},
-]
+score = 0
+
+enemies = []
+for _ in range(ENEMY_COUNT):
+    enemies.append(spawn_enemy())
 last_shot = 0
-# =====================
-# Functions
-# =====================
-def draw_ship(screen, x, y, angle, color):
-    tip = (
-        x + math.cos(angle) * PLAYER_HEIGHT,
-        y + math.sin(angle) * PLAYER_HEIGHT,
-    )
-    left = (
-        x + math.cos(angle + math.radians(140)) * PLAYER_HALF_BASE,
-        y + math.sin(angle + math.radians(140)) * PLAYER_HALF_BASE,
-    )
-    right = (
-        x + math.cos(angle - math.radians(140)) * PLAYER_HALF_BASE,
-        y + math.sin(angle - math.radians(140)) * PLAYER_HALF_BASE,
-    )
-    pygame.draw.polygon(screen, color, [tip, left, right])
 # =====================
 # Game Loop
 # =====================
+
 running = True
 while running:
     # Events
@@ -104,6 +138,19 @@ while running:
     for bullet in bullets[:]:
         bullet[0] += math.cos(bullet[2]) * BULLET_SPEED
         bullet[1] += math.sin(bullet[2]) * BULLET_SPEED
+
+        for enemy in enemies[:]:
+            dx = bullet[0] - enemy["x"]
+            dy = bullet[1] - enemy["y"]
+
+            distance = math.sqrt(dx * dx + dy * dy)
+
+            if distance < ENEMY_HIT_RADIUS:
+                bullets.remove(bullet)
+                enemies.remove(enemy)
+                score += 1
+                break
+
         if (
             bullet[0] < 0
             or bullet[0] > SCREEN_WIDTH
@@ -117,7 +164,12 @@ while running:
             player_y - enemy["y"],
             player_x - enemy["x"],
         )
+        enemy["x"] += math.cos(enemy["angle"]) * ENEMY_SPEED
+        enemy["y"] += math.sin(enemy["angle"]) * ENEMY_SPEED
     # Draw
+    while len(enemies) < ENEMY_COUNT:
+        enemies.append(spawn_enemy())
+
     screen.fill(BACKGROUND_COLOR)
     draw_ship(
         screen,
@@ -125,6 +177,8 @@ while running:
         player_y,
         player_angle,
         PLAYER_COLOR,
+        PLAYER_HALF_BASE,
+        PLAYER_HEIGHT
     )
     for enemy in enemies:
         draw_ship(
@@ -133,6 +187,8 @@ while running:
             enemy["y"],
             enemy["angle"],
             ENEMY_COLOR,
+            ENEMY_HALF_BASE,
+            ENEMY_HEIGHT
         )
     for bullet in bullets:
         pygame.draw.circle(
@@ -147,6 +203,15 @@ while running:
         (mouse_x, mouse_y),
         5,
     )
+
+    #Score
+    score_text = font.render(
+        f"Score: {score}",
+        True,
+        (255, 255, 255)
+    )
+    screen.blit(score_text, (15, 15))
+
     pygame.display.update()
     clock.tick(60)
 pygame.quit()
