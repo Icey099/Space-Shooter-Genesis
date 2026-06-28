@@ -23,6 +23,11 @@ PLAYER_COLOR = (108, 180, 219)
 PLAYER_HIT_RADIUS = 50
 PLAYER_MAX_HEALTH = 100
 PLAYER_DAMAGE = 10
+
+HEALTH_BAR_WIDTH = 55
+HEALTH_BAR_HEIGHT = 4
+HEALTH_BAR_OFFSET = 45
+
 # =====================
 # Enemy
 # =====================
@@ -63,6 +68,35 @@ def draw_ship(screen, x, y, angle, color, half_base, height):
         y + math.sin(angle - math.radians(140)) * half_base,
     )
     pygame.draw.polygon(screen, color, [tip, left, right])
+
+def draw_health_bar(screen, x, y, health, max_health):
+    pygame.draw.rect(
+        screen,
+        (60, 60, 60),
+        (
+            x - HEALTH_BAR_WIDTH // 2,
+            y + HEALTH_BAR_OFFSET,
+            HEALTH_BAR_WIDTH,
+            HEALTH_BAR_HEIGHT,
+        ),
+        border_radius=3,
+    )
+
+    current_width = (
+        health / max_health
+    ) * HEALTH_BAR_WIDTH
+
+    pygame.draw.rect(
+        screen,
+        (0, 255, 0),
+        (
+            x - HEALTH_BAR_WIDTH // 2,
+            y + HEALTH_BAR_OFFSET,
+            current_width,
+            HEALTH_BAR_HEIGHT,
+        ),
+        border_radius=3,
+    )
 
 def spawn_enemy():
     side = random.randint(0, 3)
@@ -173,6 +207,14 @@ def draw():
         PLAYER_COLOR,
         PLAYER_HALF_BASE,
         PLAYER_HEIGHT
+    )
+
+    draw_health_bar(
+        screen,
+        player_x,
+        player_y,
+        player_health,
+        PLAYER_MAX_HEALTH,
     )
 
     for enemy in enemies:
