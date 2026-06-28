@@ -24,8 +24,9 @@ PLAYER_HIT_RADIUS = 50
 PLAYER_MAX_HEALTH = 100
 PLAYER_DAMAGE = 10
 
-HEALTH_BAR_WIDTH = 55
-HEALTH_BAR_HEIGHT = 4
+PLAYER_HEALTH_BAR_WIDTH = 55
+PLAYER_HEALTH_BAR_HEIGHT = 4
+PLAYER_HEALTH_BAR_COLOR = (0, 220, 0)
 HEALTH_BAR_OFFSET = 45
 
 # =====================
@@ -37,10 +38,17 @@ ENEMY_COLOR = (255, 70, 70)
 ENEMY_SPEED = 1
 ENEMY_HIT_RADIUS = 25
 ENEMY_COUNT = 5
+
+ENEMY_MAX_HEALTH = 30
+ENEMY_DAMAGE = 10
+PLAYER_BULLET_DAMAGE = 10
+ENEMY_HEALTH_BAR_WIDTH = 35
+ENEMY_HEALTH_BAR_HEIGHT = 3
+ENEMY_HEALTH_BAR_COLOR = (220, 40, 40)
 # =====================
 # Bullets
 # =====================
-BULLET_SPEED = 8
+BULLET_SPEED = 12
 BULLET_RADIUS = 4
 BULLET_COLOR = (255, 255, 255)
 FIRE_DELAY = 150
@@ -69,31 +77,31 @@ def draw_ship(screen, x, y, angle, color, half_base, height):
     )
     pygame.draw.polygon(screen, color, [tip, left, right])
 
-def draw_health_bar(screen, x, y, health, max_health):
+def draw_health_bar(screen, x, y, health, max_health, width, height, color):
     pygame.draw.rect(
         screen,
         (60, 60, 60),
         (
-            x - HEALTH_BAR_WIDTH // 2,
+            x - width // 2,
             y + HEALTH_BAR_OFFSET,
-            HEALTH_BAR_WIDTH,
-            HEALTH_BAR_HEIGHT,
+            width,
+            height,
         ),
         border_radius=3,
     )
 
     current_width = (
         health / max_health
-    ) * HEALTH_BAR_WIDTH
+    ) * width
 
     pygame.draw.rect(
         screen,
-        (0, 255, 0),
+        color,
         (
-            x - HEALTH_BAR_WIDTH // 2,
+            x - width // 2,
             y + HEALTH_BAR_OFFSET,
             current_width,
-            HEALTH_BAR_HEIGHT,
+            height,
         ),
         border_radius=3,
     )
@@ -121,6 +129,7 @@ def spawn_enemy():
         "x": x,
         "y": y,
         "angle": 0,
+        "health": ENEMY_MAX_HEALTH,
     }
 
 def handle_input():
@@ -156,8 +165,12 @@ def update_bullets():
 
             if distance < ENEMY_HIT_RADIUS:
                 bullets.remove(bullet)
-                enemies.remove(enemy)
-                score += 1
+
+                enemy["health"] -= PLAYER_BULLET_DAMAGE
+
+                if enemy["health"] <= 0:
+                    enemies.remove(enemy) 
+                    score += 1
                 hit = True
                 break
 
@@ -188,7 +201,12 @@ def update_enemies():
 
         if distance < (PLAYER_HIT_RADIUS + ENEMY_HIT_RADIUS):
             player_health -= PLAYER_DAMAGE
+
             if player_health <= 0:
+                global high_score
+
+                if score > high_score:
+                    high_score = score
                 game_over = True
             enemies.remove(enemy)
             break
@@ -215,7 +233,10 @@ def draw():
         player_y,
         player_health,
         PLAYER_MAX_HEALTH,
-    )
+        PLAYER_HEALTH_BAR_WIDTH,
+        PLAYER_HEALTH_BAR_HEIGHT,
+        PLAYER_HEALTH_BAR_COLOR,
+        )
 
     for enemy in enemies:
         draw_ship(
@@ -226,6 +247,17 @@ def draw():
             ENEMY_COLOR,
             ENEMY_HALF_BASE,
             ENEMY_HEIGHT
+        )
+
+        draw_health_bar(
+            screen,
+            enemy["x"],
+            enemy["y"],
+            enemy["health"],
+            ENEMY_MAX_HEALTH,
+            ENEMY_HEALTH_BAR_WIDTH,
+            ENEMY_HEALTH_BAR_HEIGHT,
+            ENEMY_HEALTH_BAR_COLOR,
         )
 
     for bullet in bullets:
@@ -251,13 +283,6 @@ def draw():
     )
     screen.blit(score_text, (15, 15))
 
-    #Health
-    health_text = font.render(
-        f"Health: {player_health}",
-        True,
-        (0, 255, 0),
-    )
-    screen.blit(health_text, (15, 50))
 
 def handle_shooting():
     global last_shot
@@ -280,10 +305,12 @@ def reset_game():
     global game_over
     global last_shot
 
+
     player_x = SCREEN_WIDTH // 2
     player_y = SCREEN_HEIGHT // 2
 
     player_health = PLAYER_MAX_HEALTH
+
     score = 0
 
     bullets.clear()
@@ -298,38 +325,78 @@ def reset_game():
 def draw_game_over():
     screen.fill((0, 0, 0))
 
+    pygame.draw.line(
+        screen,
+        (80, 80, 80),
+        (SCREEN_WIDTH // 4, SCREEN_HEIGHT // 2 - 45),
+        (SCREEN_WIDTH * 3 // 4, SCREEN_HEIGHT // 2 - 45),
+        2,
+    )
+
     game_over_text = font.render(
         "GAME OVER",
         True,
-        (255, 0, 0),
+        (255, 70, 70),
+    )
+
+    score_text = font.render(
+        f"Score: {score}",
+        True,
+        (255, 255, 255),
+    )
+
+    high_score_text = font.render(
+        f"High Score: {high_score}",
+        True,
+        (255, 215, 0)
     )
 
     replay_text = font.render(
         "Press Space to Replay",
         True,
-        (255, 0, 0),
+        (180, 180, 180),
     )
 
     screen.blit(
         game_over_text,
         (
             SCREEN_WIDTH // 2 - game_over_text.get_width() //2,
-            SCREEN_HEIGHT // 2,
+            SCREEN_HEIGHT // 2 - 80,
         ),
     )
+
     screen.blit(
         replay_text,
         (
             SCREEN_WIDTH // 2 - replay_text.get_width() // 2,
-            SCREEN_HEIGHT // 2 + 20,
+            SCREEN_HEIGHT // 2 - 20,
         ),
     )
+
+    screen.blit(
+        score_text,
+        (
+            SCREEN_WIDTH // 2 - score_text.get_width() // 2,
+            SCREEN_HEIGHT // 2 + 40,
+        ),
+    )
+
+    screen.blit(
+        high_score_text,
+        (
+            SCREEN_WIDTH // 2 - high_score_text.get_width() // 2,
+            SCREEN_HEIGHT // 2 + 90,
+        ),
+    )
+
     pygame.display.update()
 # =====================
 # Game Objects
 # =====================
 bullets = []
 enemies = []
+score = 0
+high_score = 0
 reset_game()
 # =====================
 # Game Loop
