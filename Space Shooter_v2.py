@@ -52,6 +52,10 @@ BULLET_SPEED = 12
 BULLET_RADIUS = 4
 BULLET_COLOR = (255, 255, 255)
 FIRE_DELAY = 150
+
+ENEMY_BULLET_SPEED = 6
+ENEMY_BULLET_RADIUS = 2
+ENEMY_BULLET_COLOR = (255, 170, 0)
 # =====================
 # Window
 # =====================
@@ -268,6 +272,14 @@ def draw():
             BULLET_RADIUS,
         )
 
+    for bullet in enemy_bullets:
+        pygame.draw.circle(
+            screen,
+            ENEMY_BULLET_COLOR,
+            (int(bullet[0]), int(bullet[1])),
+            ENEMY_BULLET_RADIUS,
+        )
+
     pygame.draw.circle(
         screen,
         (255, 255, 0),
@@ -301,7 +313,7 @@ def handle_shooting():
 def reset_game():
     global player_x, player_y
     global player_health, score
-    global bullets, enemies
+    global bullets, enemies, enemy_bullets
     global game_over
     global last_shot
 
@@ -314,6 +326,7 @@ def reset_game():
     score = 0
 
     bullets.clear()
+    enemy_bullets.clear()
 
     enemies.clear()
     for _ in range(ENEMY_COUNT):
@@ -394,6 +407,7 @@ def draw_game_over():
 # Game Objects
 # =====================
 bullets = []
+enemy_bullets = []
 enemies = []
 score = 0
 high_score = 0
