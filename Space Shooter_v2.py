@@ -21,6 +21,8 @@ PLAYER_HALF_BASE = 40
 PLAYER_HEIGHT = 60
 PLAYER_COLOR = (108, 180, 219)
 PLAYER_HIT_RADIUS = 50
+PLAYER_MAX_HEALTH = 100
+PLAYER_DAMAGE = 10
 # =====================
 # Enemy
 # =====================
@@ -106,7 +108,6 @@ def handle_input():
 def update_bullets():
     global score
 
-        # Update bullets
     for bullet in bullets[:]:
         bullet[0] += math.cos(bullet[2]) * BULLET_SPEED
         bullet[1] += math.sin(bullet[2]) * BULLET_SPEED
@@ -138,6 +139,7 @@ def update_bullets():
             bullets.remove(bullet)
 
 def update_enemies():
+    global player_health, game_over
     for enemy in enemies[:]:
         enemy["angle"] = math.atan2(
             player_y - enemy["y"],
@@ -151,6 +153,9 @@ def update_enemies():
         distance = math.sqrt(dx * dx + dy * dy)
 
         if distance < (PLAYER_HIT_RADIUS + ENEMY_HIT_RADIUS):
+            player_health -= PLAYER_DAMAGE
+            if player_health <= 0:
+                game_over = True
             enemies.remove(enemy)
             break
 
@@ -158,7 +163,6 @@ def update_enemies():
         enemies.append(spawn_enemy())
 
 def draw():
-       # Draw
     screen.fill(BACKGROUND_COLOR)
 
     draw_ship(
@@ -205,24 +209,106 @@ def draw():
     )
     screen.blit(score_text, (15, 15))
 
+    #Health
+    health_text = font.render(
+        f"Health: {player_health}",
+        True,
+        (0, 255, 0),
+    )
+    screen.blit(health_text, (15, 50))
+
+def handle_shooting():
+    global last_shot
+
+    buttons = pygame.mouse.get_pressed()
+    current_time = pygame.time.get_ticks()
+
+    tip_x = player_x + math.cos(player_angle) * PLAYER_HEIGHT
+    tip_y = player_y + math.sin(player_angle) * PLAYER_HEIGHT
+    
+    if buttons[0]:
+        if current_time - last_shot >= FIRE_DELAY:
+            bullets.append([tip_x, tip_y, player_angle])
+            last_shot = current_time
+
+def reset_game():
+    global player_x, player_y
+    global player_health, score
+    global bullets, enemies
+    global game_over
+    global last_shot
+
+    player_x = SCREEN_WIDTH // 2
+    player_y = SCREEN_HEIGHT // 2
+
+    player_health = PLAYER_MAX_HEALTH
+    score = 0
+
+    bullets.clear()
+
+    enemies.clear()
+    for _ in range(ENEMY_COUNT):
+        enemies.append(spawn_enemy())    
+
+    last_shot = 0
+    game_over = False
+
+def draw_game_over():
+    screen.fill((0, 0, 0))
+
+    game_over_text = font.render(
+        "GAME OVER",
+        True,
+        (255, 0, 0),
+    )
+
+    replay_text = font.render(
+        "Press Space to Replay",
+        True,
+        (255, 0, 0),
+    )
+
+    screen.blit(
+        game_over_text,
+        (
+            SCREEN_WIDTH // 2 - game_over_text.get_width() //2,
+            SCREEN_HEIGHT // 2,
+        ),
+    )
+    screen.blit(
+        replay_text,
+        (
+            SCREEN_WIDTH // 2 - replay_text.get_width() // 2,
+            SCREEN_HEIGHT // 2 + 20,
+        ),
+    )
+    pygame.display.update()
 # =====================
 # Game Objects
 # =====================
-player_x = 100
-player_y = 100
 bullets = []
-score = 0
-
 enemies = []
-for _ in range(ENEMY_COUNT):
-    enemies.append(spawn_enemy())
-last_shot = 0
+reset_game()
 # =====================
 # Game Loop
 # =====================
 
 running = True
 while running:
+    if game_over:
+        draw_game_over()
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_SPACE:
+                    reset_game()
+
+        clock.tick(60)
+        continue
+
     # Events
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -235,22 +321,14 @@ while running:
 
     handle_input()
     
-    # Fire
-    buttons = pygame.mouse.get_pressed()
-    current_time = pygame.time.get_ticks()
-    tip_x = player_x + math.cos(player_angle) * PLAYER_HEIGHT
-    tip_y = player_y + math.sin(player_angle) * PLAYER_HEIGHT
-    if buttons[0]:
-        if current_time - last_shot >= FIRE_DELAY:
-            bullets.append([tip_x, tip_y, player_angle])
-            last_shot = current_time
+    handle_shooting()    
 
     update_bullets()
 
     update_enemies()
 
     draw()
-    
+
     pygame.display.update()
     clock.tick(60)
     
