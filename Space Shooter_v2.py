@@ -48,7 +48,7 @@ ENEMY_HEALTH_BAR_COLOR = (220, 40, 40)
 
 SCOUT = {
     "health": 15,
-    "speed": 1.8,
+    "speed": 1.0,
     "half_base": 20,
     "height": 32,
     "color": (255, 180, 80),
@@ -57,7 +57,7 @@ SCOUT = {
 
 FIGHTER = {
     "health": 30,
-    "speed": 1.0,
+    "speed": 0.67,
     "half_base": 25,
     "height": 40,
     "color": (255, 70, 70),
@@ -66,7 +66,7 @@ FIGHTER = {
 
 TANK = {
     "health": 70,
-    "speed": 0.55,
+    "speed": 0.25,
     "half_base": 35,
     "height": 55,
     "color": (180, 60, 255),
@@ -231,6 +231,7 @@ def update_enemy_bullets():
         dy = bullet[1] - player_y
         distance = math.sqrt(dx * dx + dy * dy)
 
+        hit = False
         if distance < PLAYER_HIT_RADIUS:
             enemy_bullets.remove(bullet)
 
@@ -240,6 +241,11 @@ def update_enemy_bullets():
                 if score > high_score:
                     high_score = score
                 game_over = True
+            hit = True
+            break
+
+        if hit:
+            continue
 
         if (
             bullet[0] < 0
@@ -251,13 +257,54 @@ def update_enemy_bullets():
 
             continue
 
+def get_enemy_type(scout_count, fighter_count, tank_count):
+    if score < 10:
+        return SCOUT
+    
+    elif score < 25:
+        if scout_count < 4:
+            return SCOUT
+        return FIGHTER
+    
+    elif score < 50:
+        if scout_count < 3:
+            return SCOUT
+        return FIGHTER
+    
+    else:
+        if scout_count < 3:
+            return SCOUT
+        if fighter_count < 1:
+            return FIGHTER
+        return TANK
+
 def update_enemies():
     global player_health, game_over
+
+    scout_count = 0
+    fighter_count = 0
+    tank_count = 0
+
+    for enemy in enemies:
+        if enemy["type"] == SCOUT:
+            scout_count += 1
+        elif enemy["type"] == FIGHTER:
+            fighter_count += 1
+        else:
+            tank_count +=1
+
     for enemy in enemies[:]:
-        enemy["angle"] = math.atan2(
+        angle = math.atan2(
             player_y - enemy["y"],
             player_x - enemy["x"],
         )
+
+        if enemy["type"] == SCOUT:
+            angle += math.radians(35)
+        
+        enemy["angle"] = angle
+
+        
         enemy["x"] += math.cos(enemy["angle"]) * enemy["type"]["speed"]
         enemy["y"] += math.sin(enemy["angle"]) * enemy["type"]["speed"]
 
@@ -278,7 +325,18 @@ def update_enemies():
             break
 
     while len(enemies) < ENEMY_COUNT:
-        enemies.append(spawn_enemy(FIGHTER))
+        enemy_type = get_enemy_type(scout_count, fighter_count, tank_count)
+        enemies.append(spawn_enemy(enemy_type))
+        
+        if enemy_type == SCOUT:
+            scout_count += 1
+
+        elif enemy_type == FIGHTER:
+            fighter_count += 1
+
+        else:
+            tank_count += 1
+
 
 def draw():
     screen.fill(BACKGROUND_COLOR)
@@ -376,6 +434,10 @@ def handle_enemy_shooting():
     current_time = pygame.time.get_ticks()
 
     for enemy in enemies:
+
+        if not enemy["type"]["can_shoot"]:
+            continue
+
         tip_x = enemy["x"] + math.cos(enemy["angle"]) * enemy["type"]["height"]
         tip_y = enemy["y"] + math.sin(enemy["angle"]) * enemy["type"]["height"]
 
@@ -409,7 +471,7 @@ def reset_game():
 
     enemies.clear()
     for _ in range(ENEMY_COUNT):
-        enemies.append(spawn_enemy(FIGHTER))    
+        enemies.append(spawn_enemy((SCOUT)))
 
     last_shot = 0
     game_over = False
