@@ -45,6 +45,34 @@ PLAYER_BULLET_DAMAGE = 10
 ENEMY_HEALTH_BAR_WIDTH = 35
 ENEMY_HEALTH_BAR_HEIGHT = 3
 ENEMY_HEALTH_BAR_COLOR = (220, 40, 40)
+
+SCOUT = {
+    "health": 15,
+    "speed": 1.8,
+    "half_base": 20,
+    "height": 32,
+    "color": (255, 180, 80),
+    "can_shoot": False,
+}
+
+FIGHTER = {
+    "health": 30,
+    "speed": 1.0,
+    "half_base": 25,
+    "height": 40,
+    "color": (255, 70, 70),
+    "can_shoot": True,
+}
+
+TANK = {
+    "health": 70,
+    "speed": 0.55,
+    "half_base": 35,
+    "height": 55,
+    "color": (180, 60, 255),
+    "can_shoot": True,
+}
+
 # =====================
 # Bullets
 # =====================
@@ -111,7 +139,7 @@ def draw_health_bar(screen, x, y, health, max_health, width, height, color):
         border_radius=3,
     )
 
-def spawn_enemy():
+def spawn_enemy(enemy_type):
     side = random.randint(0, 3)
 
     if side == 0:
@@ -134,7 +162,8 @@ def spawn_enemy():
         "x": x,
         "y": y,
         "angle": 0,
-        "health": ENEMY_MAX_HEALTH,
+        "type": enemy_type,
+        "health": enemy_type["health"],
         "last_shot": pygame.time.get_ticks() - random.randint(0, ENEMY_FIRE_DELAY)
     }
 
@@ -229,8 +258,8 @@ def update_enemies():
             player_y - enemy["y"],
             player_x - enemy["x"],
         )
-        enemy["x"] += math.cos(enemy["angle"]) * ENEMY_SPEED
-        enemy["y"] += math.sin(enemy["angle"]) * ENEMY_SPEED
+        enemy["x"] += math.cos(enemy["angle"]) * enemy["type"]["speed"]
+        enemy["y"] += math.sin(enemy["angle"]) * enemy["type"]["speed"]
 
         dx = player_x - enemy["x"]
         dy = player_y - enemy["y"]
@@ -249,7 +278,7 @@ def update_enemies():
             break
 
     while len(enemies) < ENEMY_COUNT:
-        enemies.append(spawn_enemy())
+        enemies.append(spawn_enemy(FIGHTER))
 
 def draw():
     screen.fill(BACKGROUND_COLOR)
@@ -281,9 +310,9 @@ def draw():
             enemy["x"],
             enemy["y"],
             enemy["angle"],
-            ENEMY_COLOR,
-            ENEMY_HALF_BASE,
-            ENEMY_HEIGHT
+            enemy["type"]["color"],
+            enemy["type"]["half_base"],
+            enemy["type"]["height"]
         )
 
         draw_health_bar(
@@ -291,7 +320,7 @@ def draw():
             enemy["x"],
             enemy["y"],
             enemy["health"],
-            ENEMY_MAX_HEALTH,
+            enemy["type"]["health"],
             ENEMY_HEALTH_BAR_WIDTH,
             ENEMY_HEALTH_BAR_HEIGHT,
             ENEMY_HEALTH_BAR_COLOR,
@@ -347,8 +376,8 @@ def handle_enemy_shooting():
     current_time = pygame.time.get_ticks()
 
     for enemy in enemies:
-        tip_x = enemy["x"] + math.cos(enemy["angle"]) * ENEMY_HEIGHT
-        tip_y = enemy["y"] + math.sin(enemy["angle"]) * ENEMY_HEIGHT
+        tip_x = enemy["x"] + math.cos(enemy["angle"]) * enemy["type"]["height"]
+        tip_y = enemy["y"] + math.sin(enemy["angle"]) * enemy["type"]["height"]
 
         if current_time - enemy["last_shot"] >= ENEMY_FIRE_DELAY:
             enemy_bullets.append([
@@ -380,7 +409,7 @@ def reset_game():
 
     enemies.clear()
     for _ in range(ENEMY_COUNT):
-        enemies.append(spawn_enemy())    
+        enemies.append(spawn_enemy(FIGHTER))    
 
     last_shot = 0
     game_over = False
