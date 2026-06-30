@@ -6,6 +6,7 @@ import pygame
 import random
 
 pygame.init()
+pygame.mixer.init()
 pygame.mouse.set_visible(False)
 # =====================
 # Screen
@@ -94,6 +95,16 @@ screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 pygame.display.set_caption("My First Game")
 clock = pygame.time.Clock()
 font = pygame.font.SysFont(None, 36)
+# =====================
+# Sounds
+# =====================
+laser_sound = pygame.mixer.Sound("Assets/Sounds/laser.mp3")
+explosion_sound = pygame.mixer.Sound("Assets/Sounds/explosion.mp3")
+enemy_laser_sound = pygame.mixer.Sound("Assets/Sounds/enemy_laser.mp3")
+
+laser_sound.set_volume(0.1)
+explosion_sound.set_volume(0.15)
+enemy_laser_sound.set_volume(0.1)
 # =====================
 # Functions
 # =====================
@@ -206,6 +217,7 @@ def update_bullets():
                 enemy["health"] -= PLAYER_BULLET_DAMAGE
 
                 if enemy["health"] <= 0:
+                    explosion_sound.play()
                     enemies.remove(enemy) 
                     score += 1
                     spawn_timer = pygame.time.get_ticks()
@@ -433,6 +445,7 @@ def handle_shooting():
     if buttons[0]:
         if current_time - last_shot >= FIRE_DELAY:
             bullets.append([tip_x, tip_y, player_angle])
+            laser_sound.play()
             last_shot = current_time
 
 def handle_enemy_shooting():
@@ -452,6 +465,7 @@ def handle_enemy_shooting():
                 tip_y,
                 enemy["angle"],
             ])
+            enemy_laser_sound.play()
 
             enemy["last_shot"] = current_time
             
@@ -599,7 +613,7 @@ def draw_quit_confirmation():
         yes = font.render("Yes", True, (180, 180, 180))
     else:
         no = font.render("No", True, (180, 180, 180))
-        yes = font.render("[ Yes ]", True, (255, 180, 0))
+        yes = font.render("[ Yes ]", True, (255, 230, 0))
 
     button_y = box.bottom - 70
     spacing = 80
