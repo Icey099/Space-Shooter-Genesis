@@ -52,6 +52,7 @@ BULLET_SPEED = 12
 BULLET_RADIUS = 4
 BULLET_COLOR = (255, 255, 255)
 FIRE_DELAY = 150
+ENEMY_FIRE_DELAY = 1500
 
 ENEMY_BULLET_SPEED = 6
 ENEMY_BULLET_RADIUS = 2
@@ -134,6 +135,7 @@ def spawn_enemy():
         "y": y,
         "angle": 0,
         "health": ENEMY_MAX_HEALTH,
+        "last_shot": pygame.time.get_ticks() - random.randint(0, ENEMY_FIRE_DELAY)
     }
 
 def handle_input():
@@ -188,6 +190,37 @@ def update_bullets():
             or bullet[1] > SCREEN_HEIGHT
         ):
             bullets.remove(bullet)
+
+def update_enemy_bullets():
+    global player_health, game_over, high_score
+
+    for bullet in enemy_bullets[:]:
+        bullet[0] += math.cos(bullet[2]) * ENEMY_BULLET_SPEED
+        bullet[1] += math.sin(bullet[2]) * ENEMY_BULLET_SPEED
+
+        dx = bullet[0] - player_x
+        dy = bullet[1] - player_y
+        distance = math.sqrt(dx * dx + dy * dy)
+
+        if distance < PLAYER_HIT_RADIUS:
+            enemy_bullets.remove(bullet)
+
+            player_health -= ENEMY_DAMAGE
+
+            if player_health <= 0:
+                if score > high_score:
+                    high_score = score
+                game_over = True
+
+        if (
+            bullet[0] < 0
+            or bullet[0] > SCREEN_WIDTH
+            or bullet[1] < 0
+            or bullet[1] > SCREEN_HEIGHT
+        ):
+            enemy_bullets.remove(bullet)    
+
+            continue
 
 def update_enemies():
     global player_health, game_over
@@ -309,6 +342,23 @@ def handle_shooting():
         if current_time - last_shot >= FIRE_DELAY:
             bullets.append([tip_x, tip_y, player_angle])
             last_shot = current_time
+
+def handle_enemy_shooting():
+    current_time = pygame.time.get_ticks()
+
+    for enemy in enemies:
+        tip_x = enemy["x"] + math.cos(enemy["angle"]) * ENEMY_HEIGHT
+        tip_y = enemy["y"] + math.sin(enemy["angle"]) * ENEMY_HEIGHT
+
+        if current_time - enemy["last_shot"] >= ENEMY_FIRE_DELAY:
+            enemy_bullets.append([
+                tip_x,
+                tip_y,
+                enemy["angle"],
+            ])
+
+            enemy["last_shot"] = current_time
+            
 
 def reset_game():
     global player_x, player_y
@@ -444,9 +494,13 @@ while running:
 
     handle_input()
     
-    handle_shooting()    
+    handle_shooting() 
+
+    handle_enemy_shooting()   
 
     update_bullets()
+
+    update_enemy_bullets()
 
     update_enemies()
 
