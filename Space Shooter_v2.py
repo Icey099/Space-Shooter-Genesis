@@ -73,6 +73,8 @@ TANK = {
     "can_shoot": True,
 }
 
+
+SPAWN_DELAY = 500
 # =====================
 # Bullets
 # =====================
@@ -184,7 +186,7 @@ def handle_input():
     player_y = max(0, min(player_y, SCREEN_HEIGHT))
 
 def update_bullets():
-    global score
+    global score, spawn_timer
 
     for bullet in bullets[:]:
         bullet[0] += math.cos(bullet[2]) * BULLET_SPEED
@@ -206,6 +208,7 @@ def update_bullets():
                 if enemy["health"] <= 0:
                     enemies.remove(enemy) 
                     score += 1
+                    spawn_timer = pygame.time.get_ticks()
                 hit = True
                 break
 
@@ -279,7 +282,7 @@ def get_enemy_type(scout_count, fighter_count, tank_count):
         return TANK
 
 def update_enemies():
-    global player_health, game_over
+    global player_health, game_over, spawn_timer
 
     scout_count = 0
     fighter_count = 0
@@ -324,18 +327,20 @@ def update_enemies():
             enemies.remove(enemy)
             break
 
-    while len(enemies) < ENEMY_COUNT:
-        enemy_type = get_enemy_type(scout_count, fighter_count, tank_count)
-        enemies.append(spawn_enemy(enemy_type))
-        
-        if enemy_type == SCOUT:
-            scout_count += 1
+    current_time = pygame.time.get_ticks()
 
-        elif enemy_type == FIGHTER:
-            fighter_count += 1
+    if len(enemies) < ENEMY_COUNT:
+        if current_time - spawn_timer >= SPAWN_DELAY:
 
-        else:
-            tank_count += 1
+            enemy_type = get_enemy_type(
+                scout_count, 
+                fighter_count,
+                tank_count,
+            )
+
+            enemies.append(spawn_enemy(enemy_type))
+
+            spawn_timer = current_time
 
 
 def draw():
@@ -455,8 +460,9 @@ def reset_game():
     global player_x, player_y
     global player_health, score
     global bullets, enemies, enemy_bullets
-    global game_over
+    global game_over, spawn_timer
     global last_shot
+    global confirm_quit, quit_selection
 
 
     player_x = SCREEN_WIDTH // 2
@@ -469,6 +475,7 @@ def reset_game():
     bullets.clear()
     enemy_bullets.clear()
 
+    spawn_timer = pygame.time.get_ticks()
     enemies.clear()
     for _ in range(ENEMY_COUNT):
         enemies.append(spawn_enemy((SCOUT)))
@@ -476,7 +483,11 @@ def reset_game():
     last_shot = 0
     game_over = False
 
+    confirm_quit = False
+    quit_selection = 0
+
 def draw_game_over():
+
     screen.fill((0, 0, 0))
 
     pygame.draw.line(
@@ -511,6 +522,12 @@ def draw_game_over():
         (180, 180, 180),
     )
 
+    quit_text = font.render(
+        "Press ESC to Quit",
+        True,
+        (180, 180, 180)
+    )
+
     screen.blit(
         game_over_text,
         (
@@ -520,18 +537,10 @@ def draw_game_over():
     )
 
     screen.blit(
-        replay_text,
-        (
-            SCREEN_WIDTH // 2 - replay_text.get_width() // 2,
-            SCREEN_HEIGHT // 2 - 20,
-        ),
-    )
-
-    screen.blit(
         score_text,
         (
             SCREEN_WIDTH // 2 - score_text.get_width() // 2,
-            SCREEN_HEIGHT // 2 + 40,
+            SCREEN_HEIGHT // 2 - 20,
         ),
     )
 
@@ -539,11 +548,68 @@ def draw_game_over():
         high_score_text,
         (
             SCREEN_WIDTH // 2 - high_score_text.get_width() // 2,
+            SCREEN_HEIGHT // 2 + 30,
+        ),
+    )
+
+    screen.blit(
+        replay_text,
+        (
+            SCREEN_WIDTH // 2 - replay_text.get_width() // 2,
             SCREEN_HEIGHT // 2 + 90,
         ),
     )
 
+    screen.blit(
+        quit_text,
+        (
+        SCREEN_WIDTH // 2 - quit_text.get_width() // 2,
+        SCREEN_HEIGHT // 2 + 130,
+        ),
+    )
+
+
+    if confirm_quit:
+        draw_quit_confirmation()
+
     pygame.display.update()
+
+def draw_quit_confirmation():
+    overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
+    overlay.set_alpha(170)
+    overlay.fill((0, 0, 0))
+    screen.blit(overlay, (0, 0))
+
+    box = pygame.Rect(190, 170 , 450, 220)
+
+    pygame.draw.rect(screen, (35, 35, 50), box, border_radius=12)
+    pygame.draw.rect(screen, (170, 170, 170), box, 2, border_radius=12)
+
+    title = font.render("Quit Game?", True, (255, 90, 90))
+    screen.blit(
+        title,
+        (
+        box.centerx - title.get_width() // 2,
+        box.top + 35,
+        ),
+        )
+
+    if quit_selection == 0:
+        no = font.render("[ No ]", True, (255, 230, 0))
+        yes = font.render("Yes", True, (180, 180, 180))
+    else:
+        no = font.render("No", True, (180, 180, 180))
+        yes = font.render("[ Yes ]", True, (255, 180, 0))
+
+    button_y = box.bottom - 70
+    spacing = 80
+
+    total_width = no.get_width() + spacing + yes.get_width()
+
+    start_x = box.centerx - total_width // 2
+
+    screen.blit(no, (start_x, button_y))
+    screen.blit(yes, (start_x + no.get_width() + spacing, button_y))
 # =====================
 # Game Objects
 # =====================
@@ -552,6 +618,9 @@ enemy_bullets = []
 enemies = []
 score = 0
 high_score = 0
+spawn_timer = 0
+confirm_quit = False
+quit_selection = 0
 reset_game()
 # =====================
 # Game Loop
@@ -565,10 +634,33 @@ while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
-
+               
             if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_SPACE:
-                    reset_game()
+                if not confirm_quit:
+
+                    if event.key == pygame.K_SPACE:
+                        reset_game()
+
+                    elif event.key == pygame.K_ESCAPE:
+                        confirm_quit = True
+                        quit_selection = 0
+
+                else:
+                    if event.key in (pygame.K_a, pygame.K_LEFT):
+                        quit_selection = 0
+                    elif event.key in (pygame.K_d, pygame.K_RIGHT):
+                        quit_selection = 1
+
+                    elif event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
+
+                        if quit_selection == 1:
+                            running = False
+                        else:
+                            confirm_quit = False
+                    
+                    elif event.key == pygame.K_ESCAPE:
+                        confirm_quit = False
+                    
 
         clock.tick(60)
         continue
