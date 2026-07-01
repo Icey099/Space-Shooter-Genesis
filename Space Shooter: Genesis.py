@@ -79,7 +79,7 @@ ENEMY_BULLET_COLOR = (255, 170, 0)
 # Window
 # =====================
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-pygame.display.set_caption("Space Shooter")
+pygame.display.set_caption("Space Shooter: Genesis")
 clock = pygame.time.Clock()
 font = pygame.font.SysFont(None, 36)
 # =====================
@@ -134,9 +134,68 @@ high_score = 0
 spawn_timer = 0
 confirm_quit = False
 quit_selection = 0
+
+in_menu = True
 # =====================
 # Functions
 # =====================
+def draw_menu():
+    screen.blit(background, (0, 0))
+
+    title = pygame.font.SysFont(None, 72).render(
+        "SPACE SHOOTER: GENESIS",
+        True,
+        (255, 255, 255),
+    )
+
+    start = font.render(
+        "Press Enter to Start",
+        True,
+        (255, 220, 0),
+    )
+
+    quit_game = font.render(
+        "Press Esc to Quit",
+        True,
+        (180, 180, 180),
+    )
+
+    controls = font.render(
+        "Move: WASD/Arrow Keys  Aim: Mouse  Shoot: Left Click",
+        True,
+        (200, 200, 200),
+    )
+
+    screen.blit(
+        title,
+        (SCREEN_WIDTH // 2 - title.get_width() // 2,
+        120,
+        )
+    )
+
+    screen.blit(
+        start,
+        (SCREEN_WIDTH // 2 - start.get_width() // 2,
+        260
+        )
+    )
+
+    screen.blit(
+        quit_game,
+        (SCREEN_WIDTH // 2 - quit_game.get_width() // 2,
+        310
+        )
+    )
+
+    screen.blit(
+        controls,
+        (SCREEN_WIDTH // 2 - controls.get_width() // 2,
+        450
+        )
+    )
+
+    pygame.display.update()
+
 def draw_ship(screen, x, y, angle, color, half_base, height):
     tip = (
         x + math.cos(angle) * height,
@@ -757,9 +816,26 @@ def draw_quit_confirmation():
 # Game Loop
 # =====================
 
-reset_game()
 running = True
 while running:
+    if in_menu:
+        draw_menu()
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running == False
+            
+            if event.type == pygame.KEYDOWN:
+                if event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
+                    in_menu = False
+                    reset_game()
+
+                elif event.key == pygame.K_ESCAPE:
+                    running = False
+
+        clock.tick(60)
+        continue
+
     if game_over:
         draw_game_over()
 
