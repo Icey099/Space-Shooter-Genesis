@@ -123,6 +123,18 @@ enemy_bullet = pygame.transform.scale(enemy_bullet, (32, 32))
 background = pygame.image.load("Assets/Images/background.png").convert()
 background = pygame.transform.scale(background, (SCREEN_WIDTH, SCREEN_HEIGHT))
 # =====================
+# Game Objects
+# =====================
+bullets = []
+enemy_bullets = []
+enemies = []
+particles = []
+score = 0
+high_score = 0
+spawn_timer = 0
+confirm_quit = False
+quit_selection = 0
+# =====================
 # Functions
 # =====================
 def draw_ship(screen, x, y, angle, color, half_base, height):
@@ -235,6 +247,7 @@ def update_bullets():
 
                 if enemy["health"] <= 0:
                     explosion_sound.play()
+                    create_explosion(enemy["x"], enemy["y"])
                     enemies.remove(enemy) 
                     score += 1
                     spawn_timer = pygame.time.get_ticks()
@@ -291,6 +304,36 @@ def update_enemy_bullets():
             enemy_bullets.remove(bullet)    
 
             continue
+
+def create_explosion(x, y):
+    for _ in range(20):
+        angle = random.uniform(0, math.tau)
+        speed = random.uniform(2, 6)
+
+        particles.append({
+            "x": x,
+            "y": y,
+            "dx": math.cos(angle) * speed,
+            "dy": math.sin(angle) * speed,
+            "radius": random.randint(2, 5),
+            "life": 30,
+            "color": (
+                random.randint(220, 255),
+                random.randint(100, 220),
+                0,
+            ),
+        })
+
+def update_particles():
+    for particle in particles[:]:
+        particle["x"] += particle["dx"]
+        particle["y"] += particle["dy"]
+
+        particle["radius"] *= 0.95
+        particle["life"] -= 1
+
+        if particle["life"] <= 0 or particle["radius"] < 1:
+            particles.remove(particle)
 
 def get_enemy_type(scout_count, fighter_count, tank_count):
     if score < 10:
@@ -350,6 +393,7 @@ def update_enemies():
         if distance < (PLAYER_HIT_RADIUS + ENEMY_HIT_RADIUS):
             player_hit_sound.play()
             explosion_sound.play()
+            create_explosion(enemy["x"], enemy["y"])
             player_health -= PLAYER_DAMAGE
 
             if player_health <= 0:
@@ -437,7 +481,7 @@ def draw():
         )
 
         screen.blit(rotated_player_bullet, rect)
-
+        
     for bullet in enemy_bullets:
         rotated_enemy_bullet = pygame.transform.rotate(
             enemy_bullet,
@@ -448,6 +492,14 @@ def draw():
         )
 
         screen.blit(rotated_enemy_bullet, rect)
+
+    for particle in particles:
+            pygame.draw.circle(
+                screen,
+                particle["color"],
+                (int(particle["x"]), int(particle["y"])),
+                int(particle["radius"]),
+            )
 
     pygame.draw.circle(
         screen,
@@ -658,22 +710,12 @@ def draw_quit_confirmation():
 
     screen.blit(no, (start_x, button_y))
     screen.blit(yes, (start_x + no.get_width() + spacing, button_y))
-# =====================
-# Game Objects
-# =====================
-bullets = []
-enemy_bullets = []
-enemies = []
-score = 0
-high_score = 0
-spawn_timer = 0
-confirm_quit = False
-quit_selection = 0
-reset_game()
+
 # =====================
 # Game Loop
 # =====================
 
+reset_game()
 running = True
 while running:
     if game_over:
@@ -732,6 +774,8 @@ while running:
     update_bullets()
 
     update_enemy_bullets()
+
+    update_particles()
 
     update_enemies()
 
