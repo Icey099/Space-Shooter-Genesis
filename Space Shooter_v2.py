@@ -11,19 +11,17 @@ pygame.mouse.set_visible(False)
 # =====================
 # Screen
 # =====================
-SCREEN_WIDTH = 832
-SCREEN_HEIGHT = 624
+SCREEN_WIDTH = 800
+SCREEN_HEIGHT = 600
 BACKGROUND_COLOR = (10, 10, 30)
 # =====================
 # Player
 # =====================
 PLAYER_SPEED = 3
-PLAYER_HALF_BASE = 40
-PLAYER_HEIGHT = 60
-PLAYER_COLOR = (108, 180, 219)
 PLAYER_HIT_RADIUS = 50
 PLAYER_MAX_HEALTH = 100
 PLAYER_DAMAGE = 10
+PLAYER_GUN_OFFSET = 40
 
 PLAYER_HEALTH_BAR_WIDTH = 55
 PLAYER_HEALTH_BAR_HEIGHT = 4
@@ -33,14 +31,9 @@ HEALTH_BAR_OFFSET = 45
 # =====================
 # Enemy
 # =====================
-ENEMY_HALF_BASE = 25
-ENEMY_HEIGHT = 40
-ENEMY_COLOR = (255, 70, 70)
-ENEMY_SPEED = 1
 ENEMY_HIT_RADIUS = 25
 ENEMY_COUNT = 5
 
-ENEMY_MAX_HEALTH = 30
 ENEMY_DAMAGE = 10
 PLAYER_BULLET_DAMAGE = 10
 ENEMY_HEALTH_BAR_WIDTH = 35
@@ -50,28 +43,22 @@ ENEMY_HEALTH_BAR_COLOR = (220, 40, 40)
 SCOUT = {
     "health": 15,
     "speed": 1.0,
-    "half_base": 20,
-    "height": 32,
-    "color": (255, 180, 80),
     "can_shoot": False,
+    "offset": 22
 }
 
 FIGHTER = {
     "health": 30,
     "speed": 0.67,
-    "half_base": 25,
-    "height": 40,
-    "color": (255, 70, 70),
     "can_shoot": True,
+    "offset": 28
 }
 
 TANK = {
     "health": 70,
     "speed": 0.25,
-    "half_base": 35,
-    "height": 55,
-    "color": (180, 60, 255),
     "can_shoot": True,
+    "offset": 35
 }
 
 
@@ -109,8 +96,11 @@ explosion_sound.set_volume(0.15)
 enemy_laser_sound.set_volume(0.1)
 player_hit_sound.set_volume(0.15)
 game_over_sound.set_volume(1.0)
+
+pygame.mixer.music.load("Assets/Sounds/bgm.mp3")
+pygame.mixer.music.set_volume(0.2)
 # =====================
-# Pictures
+# Sprites
 # =====================
 player_ship = pygame.image.load("Assets/Images/player.png").convert_alpha()
 player_ship = pygame.transform.scale(player_ship, (80, 80))
@@ -124,6 +114,14 @@ fighter_ship = pygame.transform.scale(fighter_ship, (70, 70))
 tank_ship = pygame.image.load("Assets/Images/tank.png").convert_alpha()
 tank_ship = pygame.transform.scale(tank_ship, (80, 80))
 
+player_bullet = pygame.image.load("Assets/Images/player_bullet.png").convert_alpha()
+player_bullet = pygame.transform.scale(player_bullet, (48, 48))
+
+enemy_bullet = pygame.image.load("Assets/Images/enemy_bullet.png").convert_alpha()
+enemy_bullet = pygame.transform.scale(enemy_bullet, (32, 32))
+
+background = pygame.image.load("Assets/Images/background.png").convert()
+background = pygame.transform.scale(background, (SCREEN_WIDTH, SCREEN_HEIGHT))
 # =====================
 # Functions
 # =====================
@@ -276,6 +274,7 @@ def update_enemy_bullets():
                 if score > high_score:
                     high_score = score
                 game_over = True
+                pygame.mixer.music.stop()
                 game_over_sound.play()
             hit = True
             break
@@ -359,6 +358,7 @@ def update_enemies():
                 if score > high_score:
                     high_score = score
                 game_over = True
+                pygame.mixer.music.stop()
                 game_over_sound.play()
             enemies.remove(enemy)
             break
@@ -380,7 +380,7 @@ def update_enemies():
 
 
 def draw():
-    screen.fill(BACKGROUND_COLOR)
+    screen.blit(background, (0, 0))
 
     rotated_player = pygame.transform.rotate(
         player_ship,
@@ -428,20 +428,26 @@ def draw():
         )
 
     for bullet in bullets:
-        pygame.draw.circle(
-            screen,
-            BULLET_COLOR,
-            (int(bullet[0]), int(bullet[1])),
-            BULLET_RADIUS,
+        rotated_player_bullet = pygame.transform.rotate(
+            player_bullet,
+            -math.degrees(bullet[2])
+        )
+        rect = rotated_player_bullet.get_rect(
+            center=(bullet[0], bullet[1])
         )
 
+        screen.blit(rotated_player_bullet, rect)
+
     for bullet in enemy_bullets:
-        pygame.draw.circle(
-            screen,
-            ENEMY_BULLET_COLOR,
-            (int(bullet[0]), int(bullet[1])),
-            ENEMY_BULLET_RADIUS,
+        rotated_enemy_bullet = pygame.transform.rotate(
+            enemy_bullet,
+            -math.degrees(bullet[2]) + 180
         )
+        rect = rotated_enemy_bullet.get_rect(
+            center=(bullet[0], bullet[1])
+        )
+
+        screen.blit(rotated_enemy_bullet, rect)
 
     pygame.draw.circle(
         screen,
@@ -465,8 +471,8 @@ def handle_shooting():
     buttons = pygame.mouse.get_pressed()
     current_time = pygame.time.get_ticks()
 
-    tip_x = player_x + math.cos(player_angle) * PLAYER_HEIGHT
-    tip_y = player_y + math.sin(player_angle) * PLAYER_HEIGHT
+    tip_x = player_x + math.cos(player_angle) * PLAYER_GUN_OFFSET
+    tip_y = player_y + math.sin(player_angle) * PLAYER_GUN_OFFSET
     
     if buttons[0]:
         if current_time - last_shot >= FIRE_DELAY:
@@ -482,8 +488,8 @@ def handle_enemy_shooting():
         if not enemy["type"]["can_shoot"]:
             continue
 
-        tip_x = enemy["x"] + math.cos(enemy["angle"]) * enemy["type"]["height"]
-        tip_y = enemy["y"] + math.sin(enemy["angle"]) * enemy["type"]["height"]
+        tip_x = enemy["x"] + math.cos(enemy["angle"]) * enemy["type"]["offset"]
+        tip_y = enemy["y"] + math.sin(enemy["angle"]) * enemy["type"]["offset"]
 
         if current_time - enemy["last_shot"] >= ENEMY_FIRE_DELAY:
             enemy_bullets.append([
@@ -525,6 +531,8 @@ def reset_game():
 
     confirm_quit = False
     quit_selection = 0
+    pygame.mixer.music.play(-1)
+
 
 def draw_game_over():
 
