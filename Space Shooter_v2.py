@@ -232,6 +232,17 @@ def update_bullets():
         bullet[0] += math.cos(bullet[2]) * BULLET_SPEED
         bullet[1] += math.sin(bullet[2]) * BULLET_SPEED
 
+        angle = bullet[2] + math.pi + random.uniform(-0.20, 0.20)
+        particles.append({
+            "x": bullet[0],
+            "y": bullet[1],
+            "dx": math.cos(angle) * random.uniform(0.5, 2),
+            "dy": math.sin(angle) * random.uniform(0.5, 2),
+            "radius": random.uniform(1, 2),
+            "life": 8,
+            "color": (180, 230, 255),
+        })
+
         hit = False
 
         for enemy in enemies[:]:
@@ -247,7 +258,7 @@ def update_bullets():
 
                 if enemy["health"] <= 0:
                     explosion_sound.play()
-                    create_explosion(enemy["x"], enemy["y"])
+                    create_explosion_particles(enemy["x"], enemy["y"])
                     enemies.remove(enemy) 
                     score += 1
                     spawn_timer = pygame.time.get_ticks()
@@ -271,6 +282,17 @@ def update_enemy_bullets():
     for bullet in enemy_bullets[:]:
         bullet[0] += math.cos(bullet[2]) * ENEMY_BULLET_SPEED
         bullet[1] += math.sin(bullet[2]) * ENEMY_BULLET_SPEED
+
+        angle = bullet[2] + math.pi + random.uniform(-0.20, 0.20)
+        particles.append({
+            "x": bullet[0],
+            "y": bullet[1],
+            "dx": math.cos(angle) * random.uniform(0.5, 2),
+            "dy": math.sin(angle) * random.uniform(0.5, 2),
+            "radius": random.uniform(1, 2),
+            "life": 8,
+            "color": (255, 70, 70),
+        })
 
         dx = bullet[0] - player_x
         dy = bullet[1] - player_y
@@ -305,7 +327,7 @@ def update_enemy_bullets():
 
             continue
 
-def create_explosion(x, y):
+def create_explosion_particles(x, y):
     for _ in range(20):
         angle = random.uniform(0, math.tau)
         speed = random.uniform(2, 6)
@@ -324,12 +346,32 @@ def create_explosion(x, y):
             ),
         })
 
+def create_engine_particles():
+    angle = player_angle + math.pi + random.uniform(-0.2, 0.2)
+
+    x = player_x + math.cos(angle) * 35
+    y = player_y + math.sin(angle) * 35
+
+    particles.append({
+            "x": x,
+            "y": y,
+            "dx": math.cos(angle) * random.uniform(2, 4),
+            "dy": math.sin(angle) * random.uniform(2, 4),
+            "radius": random.uniform(1.5, 3),
+            "life": 15,
+            "color": random.choice([
+                (180, 255, 255),
+                (120, 220, 255),
+                (70, 150, 255),
+            ]),
+        })
+    
 def update_particles():
     for particle in particles[:]:
         particle["x"] += particle["dx"]
         particle["y"] += particle["dy"]
 
-        particle["radius"] *= 0.95
+        particle["radius"] -= 0.08
         particle["life"] -= 1
 
         if particle["life"] <= 0 or particle["radius"] < 1:
@@ -393,7 +435,7 @@ def update_enemies():
         if distance < (PLAYER_HIT_RADIUS + ENEMY_HIT_RADIUS):
             player_hit_sound.play()
             explosion_sound.play()
-            create_explosion(enemy["x"], enemy["y"])
+            create_explosion_particles(enemy["x"], enemy["y"])
             player_health -= PLAYER_DAMAGE
 
             if player_health <= 0:
@@ -766,6 +808,8 @@ while running:
     player_angle = math.atan2(dy, dx)
 
     handle_input()
+
+    create_engine_particles()
     
     handle_shooting() 
 
