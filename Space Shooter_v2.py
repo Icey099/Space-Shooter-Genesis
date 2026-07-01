@@ -92,7 +92,7 @@ ENEMY_BULLET_COLOR = (255, 170, 0)
 # Window
 # =====================
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-pygame.display.set_caption("My First Game")
+pygame.display.set_caption("Space Shooter")
 clock = pygame.time.Clock()
 font = pygame.font.SysFont(None, 36)
 # =====================
@@ -110,6 +110,21 @@ enemy_laser_sound.set_volume(0.1)
 player_hit_sound.set_volume(0.15)
 game_over_sound.set_volume(1.0)
 # =====================
+# Pictures
+# =====================
+player_ship = pygame.image.load("Assets/Images/player.png").convert_alpha()
+player_ship = pygame.transform.scale(player_ship, (80, 80))
+
+scout_ship = pygame.image.load("Assets/Images/scout.png").convert_alpha()
+scout_ship = pygame.transform.scale(scout_ship, (75, 75))
+
+fighter_ship = pygame.image.load("Assets/Images/fighter.png").convert_alpha()
+fighter_ship = pygame.transform.scale(fighter_ship, (70, 70))
+
+tank_ship = pygame.image.load("Assets/Images/tank.png").convert_alpha()
+tank_ship = pygame.transform.scale(tank_ship, (80, 80))
+
+# =====================
 # Functions
 # =====================
 def draw_ship(screen, x, y, angle, color, half_base, height):
@@ -126,7 +141,7 @@ def draw_ship(screen, x, y, angle, color, half_base, height):
         y + math.sin(angle - math.radians(140)) * half_base,
     )
     pygame.draw.polygon(screen, color, [tip, left, right])
-
+    
 def draw_health_bar(screen, x, y, health, max_health, width, height, color):
     pygame.draw.rect(
         screen,
@@ -367,15 +382,12 @@ def update_enemies():
 def draw():
     screen.fill(BACKGROUND_COLOR)
 
-    draw_ship(
-        screen,
-        player_x,
-        player_y,
-        player_angle,
-        PLAYER_COLOR,
-        PLAYER_HALF_BASE,
-        PLAYER_HEIGHT
+    rotated_player = pygame.transform.rotate(
+        player_ship,
+        -math.degrees(player_angle) - 90
     )
+    rect = rotated_player.get_rect(center=(player_x, player_y))
+    screen.blit(rotated_player, rect)
 
     draw_health_bar(
         screen,
@@ -389,15 +401,20 @@ def draw():
         )
 
     for enemy in enemies:
-        draw_ship(
-            screen,
-            enemy["x"],
-            enemy["y"],
-            enemy["angle"],
-            enemy["type"]["color"],
-            enemy["type"]["half_base"],
-            enemy["type"]["height"]
+        if enemy["type"] == SCOUT:
+            enemy_ship = scout_ship
+        elif enemy["type"] == FIGHTER:
+            enemy_ship = fighter_ship
+        else:
+            enemy_ship = tank_ship
+
+        rotated_enemy = pygame.transform.rotate(
+            enemy_ship,
+            -math.degrees(enemy["angle"]) - 90
         )
+
+        rect = rotated_enemy.get_rect(center=(enemy["x"], enemy["y"]))
+        screen.blit(rotated_enemy, rect)
 
         draw_health_bar(
             screen,
