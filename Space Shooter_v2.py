@@ -101,10 +101,14 @@ font = pygame.font.SysFont(None, 36)
 laser_sound = pygame.mixer.Sound("Assets/Sounds/laser.mp3")
 explosion_sound = pygame.mixer.Sound("Assets/Sounds/explosion.mp3")
 enemy_laser_sound = pygame.mixer.Sound("Assets/Sounds/enemy_laser.mp3")
+player_hit_sound = pygame.mixer.Sound("Assets/Sounds/player_hit.wav")
+game_over_sound = pygame.mixer.Sound("Assets/Sounds/game_over.mp3")
 
 laser_sound.set_volume(0.1)
 explosion_sound.set_volume(0.15)
 enemy_laser_sound.set_volume(0.1)
+player_hit_sound.set_volume(0.15)
+game_over_sound.set_volume(1.0)
 # =====================
 # Functions
 # =====================
@@ -248,6 +252,7 @@ def update_enemy_bullets():
 
         hit = False
         if distance < PLAYER_HIT_RADIUS:
+            player_hit_sound.play()
             enemy_bullets.remove(bullet)
 
             player_health -= ENEMY_DAMAGE
@@ -256,6 +261,7 @@ def update_enemy_bullets():
                 if score > high_score:
                     high_score = score
                 game_over = True
+                game_over_sound.play()
             hit = True
             break
 
@@ -328,6 +334,8 @@ def update_enemies():
         distance = math.sqrt(dx * dx + dy * dy)
 
         if distance < (PLAYER_HIT_RADIUS + ENEMY_HIT_RADIUS):
+            player_hit_sound.play()
+            explosion_sound.play()
             player_health -= PLAYER_DAMAGE
 
             if player_health <= 0:
@@ -336,6 +344,7 @@ def update_enemies():
                 if score > high_score:
                     high_score = score
                 game_over = True
+                game_over_sound.play()
             enemies.remove(enemy)
             break
 
