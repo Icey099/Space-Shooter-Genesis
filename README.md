@@ -51,7 +51,7 @@ pip install pygame
 ## ▶️ Run the game
 
 ```bash
-python main.py
+python Space Shooter: Genesis.py
 ```
 
 ---
