@@ -196,21 +196,53 @@ def draw_menu():
 
     pygame.display.update()
 
-def draw_ship(screen, x, y, angle, color, half_base, height):
-    tip = (
-        x + math.cos(angle) * height,
-        y + math.sin(angle) * height,
-    )
-    left = (
-        x + math.cos(angle + math.radians(140)) * half_base,
-        y + math.sin(angle + math.radians(140)) * half_base,
-    )
-    right = (
-        x + math.cos(angle - math.radians(140)) * half_base,
-        y + math.sin(angle - math.radians(140)) * half_base,
-    )
-    pygame.draw.polygon(screen, color, [tip, left, right])
+def handle_input():
+    global player_x, player_y
+    # Keyboard
+    keys = pygame.key.get_pressed()
+    if keys[pygame.K_d] or keys[pygame.K_RIGHT]:
+        player_x += PLAYER_SPEED
+    if keys[pygame.K_a] or keys[pygame.K_LEFT]:
+        player_x -= PLAYER_SPEED
+    if keys[pygame.K_w] or keys[pygame.K_UP]:
+        player_y -= PLAYER_SPEED
+    if keys[pygame.K_s] or keys[pygame.K_DOWN]:
+        player_y += PLAYER_SPEED
+    # Boundaries
+    player_x = max(0, min(player_x, SCREEN_WIDTH))
+    player_y = max(0, min(player_y, SCREEN_HEIGHT))
+
+def create_engine_particles():
+    angle = player_angle + math.pi + random.uniform(-0.2, 0.2)
+
+    x = player_x + math.cos(angle) * 35
+    y = player_y + math.sin(angle) * 35
+
+    particles.append({
+            "x": x,
+            "y": y,
+            "dx": math.cos(angle) * random.uniform(2, 4),
+            "dy": math.sin(angle) * random.uniform(2, 4),
+            "radius": random.uniform(1.5, 3),
+            "life": 15,
+            "color": random.choice([
+                (180, 255, 255),
+                (120, 220, 255),
+                (70, 150, 255),
+            ]),
+        })
     
+def update_particles():
+    for particle in particles[:]:
+        particle["x"] += particle["dx"]
+        particle["y"] += particle["dy"]
+
+        particle["radius"] -= 0.08
+        particle["life"] -= 1
+
+        if particle["life"] <= 0 or particle["radius"] < 1:
+            particles.remove(particle)
+             
 def draw_health_bar(screen, x, y, health, max_health, width, height, color):
     pygame.draw.rect(
         screen,
@@ -268,21 +300,128 @@ def spawn_enemy(enemy_type):
         "last_shot": pygame.time.get_ticks() - random.randint(0, ENEMY_FIRE_DELAY)
     }
 
-def handle_input():
-    global player_x, player_y
-    # Keyboard
-    keys = pygame.key.get_pressed()
-    if keys[pygame.K_d] or keys[pygame.K_RIGHT]:
-        player_x += PLAYER_SPEED
-    if keys[pygame.K_a] or keys[pygame.K_LEFT]:
-        player_x -= PLAYER_SPEED
-    if keys[pygame.K_w] or keys[pygame.K_UP]:
-        player_y -= PLAYER_SPEED
-    if keys[pygame.K_s] or keys[pygame.K_DOWN]:
-        player_y += PLAYER_SPEED
-    # Boundaries
-    player_x = max(0, min(player_x, SCREEN_WIDTH))
-    player_y = max(0, min(player_y, SCREEN_HEIGHT))
+def get_enemy_type(scout_count, fighter_count, tank_count):
+    if score < 10:
+        return SCOUT
+    
+    elif score < 25:
+        if scout_count < 4:
+            return SCOUT
+        return FIGHTER
+    
+    elif score < 50:
+        if scout_count < 3:
+            return SCOUT
+        return FIGHTER
+    
+    else:
+        if scout_count < 3:
+            return SCOUT
+        if fighter_count < 1:
+            return FIGHTER
+        return TANK
+
+def update_enemies():
+    global player_health, game_over, spawn_timer
+
+    scout_count = 0
+    fighter_count = 0
+    tank_count = 0
+
+    for enemy in enemies:
+        if enemy["type"] == SCOUT:
+            scout_count += 1
+        elif enemy["type"] == FIGHTER:
+            fighter_count += 1
+        else:
+            tank_count +=1
+
+    for enemy in enemies[:]:
+        angle = math.atan2(
+            player_y - enemy["y"],
+            player_x - enemy["x"],
+        )
+
+        if enemy["type"] == SCOUT:
+            angle += math.radians(35)
+        
+        enemy["angle"] = angle
+
+        
+        enemy["x"] += math.cos(enemy["angle"]) * enemy["type"]["speed"]
+        enemy["y"] += math.sin(enemy["angle"]) * enemy["type"]["speed"]
+
+        dx = player_x - enemy["x"]
+        dy = player_y - enemy["y"]
+        distance = math.sqrt(dx * dx + dy * dy)
+
+        if distance < (PLAYER_HIT_RADIUS + ENEMY_HIT_RADIUS):
+            player_hit_sound.play()
+            explosion_sound.play()
+            create_explosion_particles(enemy["x"], enemy["y"])
+            player_health -= PLAYER_DAMAGE
+
+            if player_health <= 0:
+                global high_score
+
+                if score > high_score:
+                    high_score = score
+                game_over = True
+                pygame.mixer.music.stop()
+                game_over_sound.play()
+            enemies.remove(enemy)
+            break
+
+    current_time = pygame.time.get_ticks()
+
+    if len(enemies) < ENEMY_COUNT:
+        if current_time - spawn_timer >= SPAWN_DELAY:
+
+            enemy_type = get_enemy_type(
+                scout_count, 
+                fighter_count,
+                tank_count,
+            )
+
+            enemies.append(spawn_enemy(enemy_type))
+
+            spawn_timer = current_time
+
+def handle_shooting():
+    global last_shot
+
+    buttons = pygame.mouse.get_pressed()
+    current_time = pygame.time.get_ticks()
+
+    tip_x = player_x + math.cos(player_angle) * PLAYER_GUN_OFFSET
+    tip_y = player_y + math.sin(player_angle) * PLAYER_GUN_OFFSET
+    
+    if buttons[0]:
+        if current_time - last_shot >= FIRE_DELAY:
+            bullets.append([tip_x, tip_y, player_angle])
+            laser_sound.play()
+            last_shot = current_time
+
+def handle_enemy_shooting():
+    current_time = pygame.time.get_ticks()
+
+    for enemy in enemies:
+
+        if not enemy["type"]["can_shoot"]:
+            continue
+
+        tip_x = enemy["x"] + math.cos(enemy["angle"]) * enemy["type"]["offset"]
+        tip_y = enemy["y"] + math.sin(enemy["angle"]) * enemy["type"]["offset"]
+
+        if current_time - enemy["last_shot"] >= ENEMY_FIRE_DELAY:
+            enemy_bullets.append([
+                tip_x,
+                tip_y,
+                enemy["angle"],
+            ])
+            enemy_laser_sound.play()
+
+            enemy["last_shot"] = current_time
 
 def update_bullets():
     global score, spawn_timer
@@ -405,125 +544,6 @@ def create_explosion_particles(x, y):
             ),
         })
 
-def create_engine_particles():
-    angle = player_angle + math.pi + random.uniform(-0.2, 0.2)
-
-    x = player_x + math.cos(angle) * 35
-    y = player_y + math.sin(angle) * 35
-
-    particles.append({
-            "x": x,
-            "y": y,
-            "dx": math.cos(angle) * random.uniform(2, 4),
-            "dy": math.sin(angle) * random.uniform(2, 4),
-            "radius": random.uniform(1.5, 3),
-            "life": 15,
-            "color": random.choice([
-                (180, 255, 255),
-                (120, 220, 255),
-                (70, 150, 255),
-            ]),
-        })
-    
-def update_particles():
-    for particle in particles[:]:
-        particle["x"] += particle["dx"]
-        particle["y"] += particle["dy"]
-
-        particle["radius"] -= 0.08
-        particle["life"] -= 1
-
-        if particle["life"] <= 0 or particle["radius"] < 1:
-            particles.remove(particle)
-
-def get_enemy_type(scout_count, fighter_count, tank_count):
-    if score < 10:
-        return SCOUT
-    
-    elif score < 25:
-        if scout_count < 4:
-            return SCOUT
-        return FIGHTER
-    
-    elif score < 50:
-        if scout_count < 3:
-            return SCOUT
-        return FIGHTER
-    
-    else:
-        if scout_count < 3:
-            return SCOUT
-        if fighter_count < 1:
-            return FIGHTER
-        return TANK
-
-def update_enemies():
-    global player_health, game_over, spawn_timer
-
-    scout_count = 0
-    fighter_count = 0
-    tank_count = 0
-
-    for enemy in enemies:
-        if enemy["type"] == SCOUT:
-            scout_count += 1
-        elif enemy["type"] == FIGHTER:
-            fighter_count += 1
-        else:
-            tank_count +=1
-
-    for enemy in enemies[:]:
-        angle = math.atan2(
-            player_y - enemy["y"],
-            player_x - enemy["x"],
-        )
-
-        if enemy["type"] == SCOUT:
-            angle += math.radians(35)
-        
-        enemy["angle"] = angle
-
-        
-        enemy["x"] += math.cos(enemy["angle"]) * enemy["type"]["speed"]
-        enemy["y"] += math.sin(enemy["angle"]) * enemy["type"]["speed"]
-
-        dx = player_x - enemy["x"]
-        dy = player_y - enemy["y"]
-        distance = math.sqrt(dx * dx + dy * dy)
-
-        if distance < (PLAYER_HIT_RADIUS + ENEMY_HIT_RADIUS):
-            player_hit_sound.play()
-            explosion_sound.play()
-            create_explosion_particles(enemy["x"], enemy["y"])
-            player_health -= PLAYER_DAMAGE
-
-            if player_health <= 0:
-                global high_score
-
-                if score > high_score:
-                    high_score = score
-                game_over = True
-                pygame.mixer.music.stop()
-                game_over_sound.play()
-            enemies.remove(enemy)
-            break
-
-    current_time = pygame.time.get_ticks()
-
-    if len(enemies) < ENEMY_COUNT:
-        if current_time - spawn_timer >= SPAWN_DELAY:
-
-            enemy_type = get_enemy_type(
-                scout_count, 
-                fighter_count,
-                tank_count,
-            )
-
-            enemies.append(spawn_enemy(enemy_type))
-
-            spawn_timer = current_time
-
-
 def draw():
     screen.blit(background, (0, 0))
 
@@ -616,44 +636,6 @@ def draw():
         (255, 255, 255)
     )
     screen.blit(score_text, (15, 15))
-
-
-def handle_shooting():
-    global last_shot
-
-    buttons = pygame.mouse.get_pressed()
-    current_time = pygame.time.get_ticks()
-
-    tip_x = player_x + math.cos(player_angle) * PLAYER_GUN_OFFSET
-    tip_y = player_y + math.sin(player_angle) * PLAYER_GUN_OFFSET
-    
-    if buttons[0]:
-        if current_time - last_shot >= FIRE_DELAY:
-            bullets.append([tip_x, tip_y, player_angle])
-            laser_sound.play()
-            last_shot = current_time
-
-def handle_enemy_shooting():
-    current_time = pygame.time.get_ticks()
-
-    for enemy in enemies:
-
-        if not enemy["type"]["can_shoot"]:
-            continue
-
-        tip_x = enemy["x"] + math.cos(enemy["angle"]) * enemy["type"]["offset"]
-        tip_y = enemy["y"] + math.sin(enemy["angle"]) * enemy["type"]["offset"]
-
-        if current_time - enemy["last_shot"] >= ENEMY_FIRE_DELAY:
-            enemy_bullets.append([
-                tip_x,
-                tip_y,
-                enemy["angle"],
-            ])
-            enemy_laser_sound.play()
-
-            enemy["last_shot"] = current_time
-            
 
 def reset_game():
     global player_x, player_y
@@ -823,7 +805,7 @@ while running:
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                running == False
+                running = False
             
             if event.type == pygame.KEYDOWN:
                 if event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
