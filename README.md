@@ -58,7 +58,7 @@ python Space Shooter: Genesis.py
 
 ## 📸 Screenshot
 
-![Gameplay](Preview/Game Preview.png)
+![Gameplay](./Preview/Game%20Preview.png)
 
 ---
 
@@ -84,6 +84,6 @@ python Space Shooter: Genesis.py
 
 ## 👨‍💻 Author
 
-Created by **Icev099**
+Created by **Icey099**
 
 This is my first complete game made with Python and Pygame.
