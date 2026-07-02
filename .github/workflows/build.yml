@@ -23,18 +23,18 @@ jobs:
 
       - name: Build EXE
         run: |
-          pyinstaller --onefile --windowed --name "Space Shooter Genesis" space_shooter_genesis.py
+          pyinstaller --onefile --windowed --icon="Assets/Images/game_icon.ico" --name "Space Shooter Genesis" space_shooter_genesis.py
 
       - name: Prepare Release Folder
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force -Path Release
-          Copy-Item "dist/Space Shooter Genesis.exe" Release/
-          Copy-Item README.md Release/
-          Copy-Item Assets Release/ -Recurse
+          New-Item -ItemType Directory -Force -Path "Space-Shooter-Genesis-v1.0"
+          Copy-Item "dist/Space Shooter Genesis.exe" "Space-Shooter-Genesis-v1.0/"
+          Copy-Item README.md "Space-Shooter-Genesis-v1.0/"
+          Copy-Item Assets "Space-Shooter-Genesis-v1.0/" -Recurse
 
       - name: Upload Game Package
         uses: actions/upload-artifact@v4
         with:
-          name: Space-Shooter-Genesis
-          path: Release
+          name: Space-Shooter-Genesis-v1.0
+          path: Space-Shooter-Genesis-v1.0
